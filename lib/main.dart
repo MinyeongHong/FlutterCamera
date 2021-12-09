@@ -9,6 +9,8 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:path/path.dart' show join;
 import 'package:path_provider/path_provider.dart';
 
+import 'gallery.dart';
+
 Future <void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Obtain a list of the available cameras on the device.
@@ -42,7 +44,7 @@ class CameraScreenState extends State<CameraScreen> {
   Future<void>? _initializeControllerFuture;
   bool _isRecording = false;
   int selected=0;
-  List <File> savedImage=[];
+  List <File> capturedImages=[];
 
   initCamera(int cameraIdx) async{
     _controller = CameraController(
@@ -110,7 +112,6 @@ class CameraScreenState extends State<CameraScreen> {
               padding: EdgeInsets.all(20),
               child: Row(
                 children: [
-
                   FloatingActionButton(
                       backgroundColor: Colors.blue,
                       onPressed: () async {
@@ -118,8 +119,9 @@ class CameraScreenState extends State<CameraScreen> {
                           await _initializeControllerFuture;
                           final picture = await _controller!.takePicture();
                           await GallerySaver.saveImage(picture.path);
-                          File(picture.path).deleteSync();
-                          print("저장성공");
+                          setState(() {
+                            capturedImages.add(File(picture.path));
+                          });
                         } catch (e) {
                           print(e);
                         }
@@ -146,10 +148,32 @@ class CameraScreenState extends State<CameraScreen> {
                       color: Colors.white,
                     ),
                   ),
-
+                  SizedBox(
+                    width: 100,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      if (capturedImages.isEmpty) return; //Return if no image
+                      Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (context) => GalleryScreen(
+                                  images: capturedImages.reversed.toList())));
+                    },
+                    child: Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white),
+                        image: capturedImages.isNotEmpty
+                            ? DecorationImage(image: FileImage(capturedImages.last), fit: BoxFit.cover)
+                            : null,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
+
       ]
       ),
     );
@@ -166,8 +190,11 @@ class CameraScreenState extends State<CameraScreen> {
         );
         final video = await _controller!.stopVideoRecording();
         await GallerySaver.saveVideo(video.path);
-        File(video.path).deleteSync();
-        setState(() => _isRecording = false);
+        //
+        setState(() {
+          _isRecording = false;
+         // capturedImages.add(File(video.path));
+        });
       } catch (e) {
         print(e);
       }
